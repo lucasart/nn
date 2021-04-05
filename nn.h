@@ -1,27 +1,42 @@
 #pragma once
+#include <stdbool.h>
 #include <stddef.h>
 
+typedef double(*nn_func_t)(double);
+
+// Activation functions: y = f(x)
 double nn_linear(double x);
 double nn_relu(double x);
 double nn_sigmoid(double x);
-typedef double(*nn_act_t)(double);
 
+// Derivative on the inverse: f'(f^{-1}(y)) = f'(x)
+double nn_linear_derinv(double y);
+double nn_relu_derinv(double y);
+double nn_sigmoid_derinv(double y);
+
+// An layer describes the connexion (input layer, weights) -> output layer
 typedef struct {
-    double *inputs;  // vector of inputCnt elements
-    double *weights;  // vector of (inputCnt + 1) * outputCnt elements
-    nn_act_t act;  // activation function (pointer)
-    double *outputs;  // vector of outputCnt elements. this is NOT owned by nn_layer_t.
-    size_t inputCnt, outputCnt;
+    // Neurons on this layer
+    size_t neuronCnt;
+    double *neurons;
+    double *deltas;  // derivative of the error wrt each neuron (NULL for input layer)
+    nn_func_t act, actDerinv;  // activation function and its derinv (NULL for input layer)
+
+    // Connextion to the next layer
+    double *weights;  // (neuronCnt + 1) * nextLayer.neuronCnt (NULL for output layer)
 } nn_layer_t;
 
-nn_layer_t nn_layer_init(size_t inputCnt, nn_act_t act, size_t outputCnt, double *outputs);
-void nn_layer_destroy(nn_layer_t *nn);
+void nn_layer_print(const nn_layer_t *layer, size_t nextLayerNeuronCnt, const char *what);
 
 typedef struct {
+    double *weights, *neurons, *deltas;
+    size_t neuronCnt, weightCnt;
     nn_layer_t *layers;
-    size_t layersCnt;
+    size_t layerCnt;
 } nn_network_t;
 
-nn_network_t nn_network_init(size_t layersCnt, size_t *intputCnts, nn_act_t *acts,
-    size_t outputCnt);
+nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, nn_func_t *acts,
+    nn_func_t *actDerinvs);
 void nn_network_destroy(nn_network_t *nn);
+void nn_network_print(const nn_network_t *nn, const char *what);
+void nn_run(const nn_network_t *nn);
