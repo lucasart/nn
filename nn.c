@@ -57,15 +57,13 @@ nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, nn_func_t *act
             nn.weightCnt += (neuronCnts[i] + 1) * neuronCnts[i+1];
     }
 
-    nn.weights = calloc(nn.weightCnt, sizeof(double *));
-    nn.neurons = calloc(nn.neuronCnt, sizeof(double *));
-    nn.deltas = calloc(nn.neuronCnt - neuronCnts[0], sizeof(double *));
+    nn.block = calloc(nn.weightCnt + 2 * nn.neuronCnt - neuronCnts[0], sizeof(double *));
 
     // First layer
     nn.layers[0] = (nn_layer_t){
         .neuronCnt = neuronCnts[0],
-        .neurons = nn.neurons,
-        .weights = nn.weights
+        .weights = nn.block,
+        .neurons = nn.block + nn.weightCnt
         // .deltas .act .actDerinv are NULL
     };
 
@@ -73,11 +71,14 @@ nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, nn_func_t *act
         nn.layers[i] = (nn_layer_t){
             .neuronCnt = neuronCnts[i],
             .neurons = nn.layers[i-1].neurons + neuronCnts[i-1],
-            .deltas = i > 1 ? nn.layers[i-1].deltas + neuronCnts[i-1] : nn.deltas,
+            .deltas = i > 1
+                ? nn.layers[i-1].deltas + neuronCnts[i-1]
+                : nn.block + nn.weightCnt + nn.neuronCnt,
             .act = acts[i-1],
             .actDerinv = actDerinvs[i-1],
             .weights = i+1 < layerCnt
-                ? nn.layers[i-1].weights + (neuronCnts[i-1] + 1) * neuronCnts[i] : NULL
+                ? nn.layers[i-1].weights + (neuronCnts[i-1] + 1) * neuronCnts[i]
+                : NULL
         };
 
     return nn;
@@ -85,9 +86,7 @@ nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, nn_func_t *act
 
 void nn_network_destroy(nn_network_t *nn)
 {
-    free(nn->deltas);
-    free(nn->neurons);
-    free(nn->weights);
+    free(nn->block);
     free(nn->layers);
     *nn = (nn_network_t){0};
 }

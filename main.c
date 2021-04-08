@@ -29,11 +29,8 @@ int main(void)
     // Random weights and inputs
     uint64_t seed = 0;
 
-    for (size_t i = 0; i < nn.weightCnt; i++)
-        nn.weights[i] = prng_double(&seed);
-
-    for (size_t i = 0; i < nn.layers[0].neuronCnt; i++)
-        nn.layers[0].neurons[i] = prng_double(&seed);
+    for (size_t i = 0; i < nn.weightCnt + nn.neuronCnt; i++)
+        nn.block[i] = prng_double(&seed);
 
     nn_run(&nn);
     nn_network_print(&nn, "nw");

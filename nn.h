@@ -29,8 +29,14 @@ typedef struct {
 void nn_layer_print(const nn_layer_t *layer, size_t nextLayerNeuronCnt, const char *what);
 
 typedef struct {
-    double *weights, *neurons, *deltas;
-    size_t neuronCnt, weightCnt;
+    // For best performance, all in one memory block. Layout is:
+    // - double weights[weightCnt]
+    // - double neurons[neuronCnt]
+    // - double deltas[neuronCnt - layers[0].neuronCnt] (input layer has no deltas)
+    double *block;
+    size_t weightCnt, neuronCnt;
+
+    // For practicality, organize the above memory block by layer
     nn_layer_t *layers;
     size_t layerCnt;
 } nn_network_t;
