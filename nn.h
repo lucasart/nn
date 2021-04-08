@@ -25,7 +25,7 @@ typedef struct {
     // Neurons on this layer
     size_t neuronCnt;
     double *neurons;
-    double *deltas;  // derivative of the error wrt each neuron (NULL for input layer)
+    double *deltas;  // derivative of the error wrt each neuron's input (NULL for input layer)
     nn_func_t act, actDerinv;  // activation function and its derinv (NULL for input layer)
 
     // Connextion to the next layer
@@ -50,4 +50,7 @@ typedef struct {
 nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, int *actIds);
 void nn_network_destroy(nn_network_t *nn);
 void nn_network_print(const nn_network_t *nn, const char *what);
-void nn_run(const nn_network_t *nn);
+void nn_run(const nn_network_t *nn, const double *inputs);
+
+// Compute the deltas based on an example = (inputs, outputs)
+void nn_backprop(const nn_network_t *nn, const double *inputs, const double *outputs);
