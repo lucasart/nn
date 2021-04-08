@@ -12,6 +12,12 @@ double nn_linear_derinv(double y) { (void)y; return 1; }
 double nn_relu_derinv(double y) { return y > 0 ? 1 : 0; }
 double nn_sigmoid_derinv(double y) { return y * (1 - y); }
 
+static const struct { int id; nn_func_t func; nn_func_t funcDerinv; } actMap[] = {
+    {NN_LINEAR, nn_linear, nn_linear_derinv},
+    {NN_RELU, nn_relu, nn_relu_derinv},
+    {NN_SIGMOID, nn_sigmoid, nn_sigmoid_derinv}
+};
+
 static void nn_print_array(size_t n, const double *array)
 {
     for (size_t i = 0; i < n; i++)
@@ -42,8 +48,7 @@ void nn_layer_print(const nn_layer_t *layer, size_t nextLayerNeuronCnt, const ch
     }
 }
 
-nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, nn_func_t *acts,
-    nn_func_t *actDerinvs)
+nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, int *actIds)
 {
     nn_network_t nn = {
         .layers = malloc(layerCnt * sizeof(nn_layer_t)),
@@ -74,8 +79,8 @@ nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, nn_func_t *act
             .deltas = i > 1
                 ? nn.layers[i-1].deltas + neuronCnts[i-1]
                 : nn.block + nn.weightCnt + nn.neuronCnt,
-            .act = acts[i-1],
-            .actDerinv = actDerinvs[i-1],
+            .act = actMap[actIds[i-1]].func,
+            .actDerinv = actMap[actIds[i-1]].funcDerinv,
             .weights = i+1 < layerCnt
                 ? nn.layers[i-1].weights + (neuronCnts[i-1] + 1) * neuronCnts[i]
                 : NULL

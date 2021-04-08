@@ -23,13 +23,12 @@ static double prng_double(uint64_t *x)
 int main(void)
 {
     nn_network_t nn = nn_network_init(4, (size_t[4]){4, 3, 2, 1},
-        (nn_func_t[3]){nn_linear, nn_relu, nn_sigmoid},
-        (nn_func_t[3]){nn_linear_derinv, nn_relu_derinv, nn_sigmoid_derinv});
+        (int[3]){NN_LINEAR, NN_RELU, NN_SIGMOID});
 
     // Random weights and inputs
     uint64_t seed = 0;
 
-    for (size_t i = 0; i < nn.weightCnt + nn.neuronCnt; i++)
+    for (size_t i = 0; i < nn.weightCnt + nn.layers[0].neuronCnt; i++)
         nn.block[i] = prng_double(&seed);
 
     nn_run(&nn);

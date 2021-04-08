@@ -14,6 +14,12 @@ double nn_linear_derinv(double y);
 double nn_relu_derinv(double y);
 double nn_sigmoid_derinv(double y);
 
+enum {
+    NN_LINEAR,
+    NN_RELU,
+    NN_SIGMOID
+};
+
 // An layer describes the connexion (input layer, weights) -> output layer
 typedef struct {
     // Neurons on this layer
@@ -41,8 +47,7 @@ typedef struct {
     size_t layerCnt;
 } nn_network_t;
 
-nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, nn_func_t *acts,
-    nn_func_t *actDerinvs);
+nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, int *actIds);
 void nn_network_destroy(nn_network_t *nn);
 void nn_network_print(const nn_network_t *nn, const char *what);
 void nn_run(const nn_network_t *nn);
