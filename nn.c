@@ -109,6 +109,10 @@ void nn_run(const nn_network_t *nn, const double *inputs)
     if (inputs)
         memcpy(nn->layers[0].neurons, inputs, nn->layers[0].neuronCnt * sizeof(double *));
 
+    // Clear deltas[]
+    memset(nn->block + nn->weightCnt + nn->neuronCnt, 0,
+        (nn->neuronCnt - nn->layers[0].neuronCnt) * sizeof(double *));
+
     for (size_t l = 1; l < nn->layerCnt; l++) {
         const double *w = nn->layers[l - 1].weights;
 
@@ -131,27 +135,21 @@ void nn_backprop(const nn_network_t *nn, const double *inputs, const double *out
     // First compute the net forward
     nn_run(nn, inputs);
 
-    // short notation for 'current layer' and 'next layer'
-    const nn_layer_t *cl = NULL, *nl = NULL;
-
     // Compute deltas on the output layer
-    cl = &nn->layers[nn->layerCnt - 1];
+    const nn_layer_t *ol = &nn->layers[nn->layerCnt - 1];
 
-    for (size_t j = 0; j < cl->neuronCnt; j++)  // FIXME: assumes squared error, need absolute also
-        cl->deltas[j] = (cl->neurons[j] - outputs[j]) * cl->actDerinv(cl->neurons[j]);
+    for (size_t j = 0; j < ol->neuronCnt; j++)  // FIXME: assumes squared error, need absolute also
+        ol->deltas[j] = (ol->neurons[j] - outputs[j]) * ol->actDerinv(ol->neurons[j]);
 
     // Compute deltas on inner layer l based on deltas from next layer l+1
     for (size_t l = nn->layerCnt - 2; l > 0; l--) {
-        cl = &nn->layers[l];
-        nl = &nn->layers[l + 1];
+        const nn_layer_t *cl = &nn->layers[l], *nl = &nn->layers[l + 1];  // current and next layer
 
-        for (size_t i = 0; i < cl->neuronCnt; i++) {
-            cl->deltas[i] = 0;
-
-            for (size_t j = 0; j < nl->neuronCnt; j++)
+        for (size_t j = 0; j < nl->neuronCnt; j++)
+            for (size_t i = 0; i < cl->neuronCnt; i++)
                 cl->deltas[i] += cl->weights[j * (cl->neuronCnt + 1) + i + 1] * nl->deltas[j];
 
+        for (size_t i = 0; i < cl->neuronCnt; i++)
             cl->deltas[i] *= cl->actDerinv(cl->neurons[i]);
-        }
     }
 }
