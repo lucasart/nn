@@ -117,12 +117,14 @@ void nn_run(const nn_network_t *nn, const double *inputs)
         const double *w = nn->layers[l - 1].weights;
 
         for (size_t o = 0; o < nn->layers[l].neuronCnt; o++) {
-            // start with the biais
-            double sum = *w++;
+            double sum = 0;
 
             // add the sum product
             for (size_t i = 0; i < nn->layers[l - 1].neuronCnt; i++)
                 sum += nn->layers[l - 1].neurons[i] * *w++;
+
+            // add the biais
+            sum += *w++;
 
             // apply activation function and store neuron value
             nn->layers[l].neurons[o] = nn->layers[l].act(sum);
@@ -147,7 +149,7 @@ void nn_backprop(const nn_network_t *nn, const double *inputs, const double *out
 
         for (size_t j = 0; j < nl->neuronCnt; j++)
             for (size_t i = 0; i < cl->neuronCnt; i++)
-                cl->deltas[i] += cl->weights[j * (cl->neuronCnt + 1) + i + 1] * nl->deltas[j];
+                cl->deltas[i] += cl->weights[j * (cl->neuronCnt + 1) + i] * nl->deltas[j];
 
         for (size_t i = 0; i < cl->neuronCnt; i++)
             cl->deltas[i] *= cl->actDerinv(cl->neurons[i]);
