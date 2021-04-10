@@ -36,6 +36,7 @@ typedef struct {
     double *weights;  // (neuronCnt + 1) * nextLayer.neuronCnt (NULL for output layer)
 } nn_layer_t;
 
+void nn_print_array(size_t n, const double *array);
 void nn_layer_print(const nn_layer_t *layer, size_t nextLayerNeuronCnt, const char *what);
 
 typedef struct {
@@ -73,8 +74,11 @@ void nn_network_print(const nn_network_t *nn, const char *what);
 // - NULL: assumes inputs are already placed in nn->layers[0].neurons[].
 void nn_run(const nn_network_t *nn, const double *inputs);
 
-// Compute the deltas based on an expected output. You must first run the network forward:
-// - given a training example = (inputs, outputs);
-// - step 1: nn_run(nn, inputs);
-// - step 2: nn_backprop(nn, output).
-void nn_backprop(const nn_network_t *nn, const double *outputs);
+// Run the network forward, and compute the deltas[] based on a sample = (inputs, outputs)
+// absolute: if true, use absolute error |x-y|, else use squared error 0.5*(x-y)^2
+void nn_backprop(const nn_network_t *nn, const double *inputs, const double *outputs,
+    bool absolute);
+
+// Same as backprop, but goes a step further to retreive the gradient[nn->weightCnt]
+void nn_gradient(const nn_network_t *nn, const double *inputs, const double *outputs, bool absolute,
+    double *gradient);

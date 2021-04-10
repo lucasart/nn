@@ -44,9 +44,11 @@ int main(void)
     for (size_t i = 0; i < nn.weightCnt + nn.layers[0].neuronCnt; i++)
         nn.block[i] = prng_double(&seed);
 
-    nn_run(&nn, NULL);
-    nn_backprop(&nn, (double[1]){0.5});
+    double gradient[nn.weightCnt];
+    nn_gradient(&nn, NULL, (double[1]){0.5}, false, gradient);
 
     nn_network_print(&nn, "nwd");
+    nn_print_array(nn.weightCnt, gradient);
+
     nn_network_destroy(&nn);
 }

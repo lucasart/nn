@@ -32,7 +32,7 @@ static const struct { int id; nn_func_t func, funcDerinv; } actMap[] = {
     {NN_SIGMOID, nn_sigmoid, nn_sigmoid_derinv}
 };
 
-static void nn_print_array(size_t n, const double *array)
+void nn_print_array(size_t n, const double *array)
 {
     for (size_t i = 0; i < n; i++)
         printf(i == n - 1 ? "%f\n": "%f,", array[i]);
@@ -146,13 +146,18 @@ void nn_run(const nn_network_t *nn, const double *inputs)
     }
 }
 
-void nn_backprop(const nn_network_t *nn, const double *outputs)
+static void nn_do_backprop(const nn_network_t *nn, const double *outputs, bool absolute)
 {
     // Compute deltas on the output layer
     const nn_layer_t *ol = &nn->layers[nn->layerCnt - 1];
 
-    for (size_t j = 0; j < ol->neuronCnt; j++)  // FIXME: assumes squared error, need absolute also
-        ol->deltas[j] = (ol->neurons[j] - outputs[j]) * ol->actDerinv(ol->neurons[j]);
+    for (size_t j = 0; j < ol->neuronCnt; j++) {
+        const double diff = ol->neurons[j] - outputs[j];  // diff = o - t
+        ol->deltas[j] = ol->actDerinv(ol->neurons[j]);
+        ol->deltas[j] *= absolute
+            ? (diff > 0 ? 1 : diff < 0 ? -1 : 0)  // d/do(|diff|) = sign(diff)
+            : diff;  // d/do(.5*diff^2) = diff
+    }
 
     // Compute deltas on inner layer l based on deltas from next layer l+1
     for (size_t l = nn->layerCnt - 2; l > 0; l--) {
@@ -165,4 +170,28 @@ void nn_backprop(const nn_network_t *nn, const double *outputs)
         for (size_t i = 0; i < cl->neuronCnt; i++)
             cl->deltas[i] *= cl->actDerinv(cl->neurons[i]);
     }
+}
+
+void nn_backprop(const nn_network_t *nn, const double *inputs, const double *outputs, bool absolute)
+{
+    nn_run(nn, inputs);
+    nn_do_backprop(nn, outputs, absolute);
+}
+
+static void nn_do_gradient(const nn_network_t *nn, double *gradient)
+{
+    for (size_t l = 0; l < nn->layerCnt - 1; l++)
+        for (size_t j = 0; j < nn->layers[l + 1].neuronCnt; j++) {
+            for (size_t i = 0; i < nn->layers[l].neuronCnt; i++)
+                *gradient++ = nn->layers[l].neurons[i] * nn->layers[l + 1].deltas[j];
+
+            *gradient++ = nn->layers[l + 1].deltas[j];  // biais
+        }
+}
+
+void nn_gradient(const nn_network_t *nn, const double *inputs, const double *outputs, bool absolute,
+    double *gradient)
+{
+    nn_backprop(nn, inputs, outputs, absolute);
+    nn_do_gradient(nn, gradient);
 }
