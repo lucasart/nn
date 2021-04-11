@@ -47,14 +47,23 @@ int main(void)
     double gradient[nn.weightCnt];
     nn_gradient(&nn, NULL, (double[1]){0.5}, false, gradient);
 
+    puts("network:");
     nn_network_print(&nn, "anwd");
 
-    puts("gradient:");
+    puts("\ngradient:");
     nn_array_print(nn.weightCnt, gradient);
 
     FILE *out = fopen("network.bin", "wb");
     nn_save(&nn, out);
     fclose(out);
 
+    FILE *in = fopen("network.bin", "rb");
+    nn_network_t nnVerify = nn_load(in);
+    fclose(in);
+
+    puts("\nnetwork reloaded:");
+    nn_network_print(&nn, "aw");
+
+    nn_network_destroy(&nnVerify);
     nn_network_destroy(&nn);
 }

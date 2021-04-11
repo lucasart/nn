@@ -59,7 +59,7 @@ void nn_layer_print(const nn_layer_t *layer, uint32_t nextLayerNeuronCnt, const 
         const double *w = layer->weights;
 
         for (uint32_t j = 0; j < nextLayerNeuronCnt; j++) {
-            printf("%" PRIu32 ":", j);
+            printf("    %" PRIu32 ":", j);
             nn_array_print(layer->neuronCnt + 1, w);
             w += layer->neuronCnt + 1;
         }
