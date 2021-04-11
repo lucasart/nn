@@ -191,8 +191,8 @@ static void nn_do_gradient(const nn_network_t *nn, double *gradient)
         }
 }
 
-void nn_gradient(const nn_network_t *nn, const double *inputs, const double *outputs, bool absolute,
-    double *gradient)
+void nn_gradient(const nn_network_t *nn, const double *inputs, const double *outputs,
+    double *gradient, bool absolute)
 {
     nn_backprop(nn, inputs, outputs, absolute);
     nn_do_gradient(nn, gradient);

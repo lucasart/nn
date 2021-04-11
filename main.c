@@ -45,7 +45,7 @@ int main(void)
         nn.block[i] = prng_double(&seed);
 
     double gradient[nn.weightCnt];
-    nn_gradient(&nn, NULL, (double[1]){0.5}, false, gradient);
+    nn_gradient(&nn, NULL, (double[1]){0.5}, gradient, false);
 
     puts("network:");
     nn_network_print(&nn, "anwd");
