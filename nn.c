@@ -17,6 +17,8 @@
 #include <string.h>
 #include "nn.h"
 
+typedef double(*nn_func_t)(double);
+
 static double nn_linear(double x) { return x; }
 static double nn_relu(double x) { return x > 0 ? x : 0; }
 static double nn_sigmoid(double x) { return 1 / (1 + exp(-x)); }
