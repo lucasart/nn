@@ -14,7 +14,7 @@
 */
 #pragma once
 #include <stdbool.h>
-#include <stddef.h>
+#include <inttypes.h>
 
 // Activation functions
 typedef double(*nn_func_t)(double);
@@ -26,18 +26,16 @@ enum {
 };
 
 typedef struct {
-    // Neurons on this layer
-    size_t neuronCnt;
-    double *neurons;
+    double *neurons;  // neurons on this layer
     double *deltas;  // derivative of the error wrt each neuron's input (NULL for input layer)
-    nn_func_t act, actDerinv;  // activation function and its derinv (NULL for input layer)
-
-    // Connextion to the next layer
     double *weights;  // (neuronCnt + 1) * nextLayer.neuronCnt (NULL for output layer)
+
+    uint32_t neuronCnt;  // number of neurons on this layer
+    uint32_t actId;  // identifier of activation function (eg. NN_RELU)
 } nn_layer_t;
 
-void nn_print_array(size_t n, const double *array);
-void nn_layer_print(const nn_layer_t *layer, size_t nextLayerNeuronCnt, const char *what);
+void nn_array_print(size_t n, const double *array);
+void nn_layer_print(const nn_layer_t *layer, uint32_t nextLayerNeuronCnt, const char *what);
 
 typedef struct {
     // For best performance, allocate everything in one memory block. Layout is:
@@ -45,11 +43,11 @@ typedef struct {
     // - double neurons[neuronCnt]
     // - double deltas[neuronCnt - layers[0].neuronCnt] (input layer has no deltas)
     double *block;
-    size_t weightCnt, neuronCnt;
 
-    // For practicality, organize the above memory block by layer
+    // To reduce indexing hell, layers[] contain what is needed to handle block[] data easily
     nn_layer_t *layers;
-    size_t layerCnt;
+
+    uint32_t layerCnt, weightCnt, neuronCnt;
 } nn_network_t;
 
 // Create a network (zero initialized):
@@ -57,16 +55,17 @@ typedef struct {
 // - neuronCnts[layerCnt]: how many neurons per layer.
 // - actIds[layerCnt - 1]: activation function for each layer (starts with layer 1, because layer 0
 //   is just the input layer which has no activation function).
-nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, int *actIds);
+nn_network_t nn_network_init(uint32_t layerCnt, uint32_t *neuronCnts, uint32_t *actIds);
 
 // Releases memory (and sets *nn = {0} for good measure)
 void nn_network_destroy(nn_network_t *nn);
 
 // Display the network in human readable form on stdout. what is a string of characters, used to say
 // what you want to print:
+// - 'a': print the activation function (not applicable for the first layer)
 // - 'n': print the neurons
-// - 'w': print the weights
 // - 'd': print the deltas (computed by backprop)
+// - 'w': print the weights
 void nn_network_print(const nn_network_t *nn, const char *what);
 
 // Run the network forward. inputs may be:

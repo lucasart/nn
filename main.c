@@ -36,19 +36,21 @@ static double prng_double(uint64_t *x)
 
 int main(void)
 {
-    nn_network_t nn = nn_network_init(4, (size_t[4]){4, 3, 2, 1},
-        (int[3]){NN_LINEAR, NN_RELU, NN_SIGMOID});
+    nn_network_t nn = nn_network_init(4, (uint32_t[4]){4, 3, 2, 1},
+        (uint32_t[3]){NN_LINEAR, NN_RELU, NN_SIGMOID});
 
     // Random weights and inputs
     uint64_t seed = 0;
-    for (size_t i = 0; i < nn.weightCnt + nn.layers[0].neuronCnt; i++)
+    for (uint32_t i = 0; i < nn.weightCnt + nn.layers[0].neuronCnt; i++)
         nn.block[i] = prng_double(&seed);
 
     double gradient[nn.weightCnt];
     nn_gradient(&nn, NULL, (double[1]){0.5}, false, gradient);
 
-    nn_network_print(&nn, "nwd");
-    nn_print_array(nn.weightCnt, gradient);
+    nn_network_print(&nn, "anwd");
+
+    puts("gradient:");
+    nn_array_print(nn.weightCnt, gradient);
 
     nn_network_destroy(&nn);
 }

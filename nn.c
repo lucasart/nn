@@ -26,50 +26,53 @@ static double nn_linear_derinv(double y) { (void)y; return 1; }
 static double nn_relu_derinv(double y) { return y > 0 ? 1 : 0; }
 static double nn_sigmoid_derinv(double y) { return y * (1 - y); }
 
-static const struct { int id; nn_func_t func, funcDerinv; } actMap[] = {
-    {NN_LINEAR, nn_linear, nn_linear_derinv},
-    {NN_RELU, nn_relu, nn_relu_derinv},
-    {NN_SIGMOID, nn_sigmoid, nn_sigmoid_derinv}
+static const struct { uint32_t id; nn_func_t func, funcDerinv; char name[8]; } actMap[] = {
+    {NN_LINEAR, nn_linear, nn_linear_derinv, "linear"},
+    {NN_RELU, nn_relu, nn_relu_derinv, "relu"},
+    {NN_SIGMOID, nn_sigmoid, nn_sigmoid_derinv, "sigmoid"}
 };
 
-void nn_print_array(size_t n, const double *array)
+void nn_array_print(size_t n, const double *array)
 {
     for (size_t i = 0; i < n; i++)
         printf(i == n - 1 ? "%f\n": "%f,", array[i]);
 }
 
-void nn_layer_print(const nn_layer_t *layer, size_t nextLayerNeuronCnt, const char *what)
+void nn_layer_print(const nn_layer_t *layer, uint32_t nextLayerNeuronCnt, const char *what)
 {
+    if (strchr(what, 'a') && layer->deltas)
+        printf("activation=%s\n", actMap[layer->actId].name);
+
     if (strchr(what, 'n')) {
-        printf("neurons[%zu]=", layer->neuronCnt);
-        nn_print_array(layer->neuronCnt, layer->neurons);
+        printf("neurons[%" PRIu32 "]=", layer->neuronCnt);
+        nn_array_print(layer->neuronCnt, layer->neurons);
     }
 
     if (strchr(what, 'd') && layer->deltas) {
-        printf("deltas[%zu]=", layer->neuronCnt);
-        nn_print_array(layer->neuronCnt, layer->deltas);
+        printf("deltas[%" PRIu32 "]=", layer->neuronCnt);
+        nn_array_print(layer->neuronCnt, layer->deltas);
     }
 
     if (strchr(what, 'w') && layer->weights) {
-        printf("weights[%zu][%zu]=\n", nextLayerNeuronCnt, layer->neuronCnt + 1);
+        printf("weights[%" PRIu32 "][%" PRIu32 "]=\n", nextLayerNeuronCnt, layer->neuronCnt + 1);
         const double *w = layer->weights;
 
-        for (size_t j = 0; j < nextLayerNeuronCnt; j++) {
-            printf("%zu:", j);
-            nn_print_array(layer->neuronCnt + 1, w);
+        for (uint32_t j = 0; j < nextLayerNeuronCnt; j++) {
+            printf("%" PRIu32 ":", j);
+            nn_array_print(layer->neuronCnt + 1, w);
             w += layer->neuronCnt + 1;
         }
     }
 }
 
-nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, int *actIds)
+nn_network_t nn_network_init(uint32_t layerCnt, uint32_t *neuronCnts, uint32_t *actIds)
 {
     nn_network_t nn = {
         .layers = malloc(layerCnt * sizeof(nn_layer_t)),
         .layerCnt = layerCnt
     };
 
-    for (size_t i = 0; i < layerCnt; i++) {
+    for (uint32_t i = 0; i < layerCnt; i++) {
         nn.neuronCnt += neuronCnts[i];
 
         if (i+1 < layerCnt)
@@ -83,18 +86,16 @@ nn_network_t nn_network_init(size_t layerCnt, size_t *neuronCnts, int *actIds)
         .neuronCnt = neuronCnts[0],
         .weights = nn.block,
         .neurons = nn.block + nn.weightCnt
-        // .deltas .act .actDerinv are NULL
     };
 
-    for (size_t i = 1; i < layerCnt; i++)
+    for (uint32_t i = 1; i < layerCnt; i++)
         nn.layers[i] = (nn_layer_t){
             .neuronCnt = neuronCnts[i],
             .neurons = nn.layers[i - 1].neurons + neuronCnts[i - 1],
             .deltas = i > 1
                 ? nn.layers[i - 1].deltas + neuronCnts[i - 1]
                 : nn.block + nn.weightCnt + nn.neuronCnt,
-            .act = actMap[actIds[i - 1]].func,
-            .actDerinv = actMap[actIds[i - 1]].funcDerinv,
+            .actId = actIds[i - 1],
             .weights = i+1 < layerCnt
                 ? nn.layers[i - 1].weights + (neuronCnts[i - 1] + 1) * neuronCnts[i]
                 : NULL
@@ -112,8 +113,8 @@ void nn_network_destroy(nn_network_t *nn)
 
 void nn_network_print(const nn_network_t *nn, const char *what)
 {
-    for (size_t i = 0; i < nn->layerCnt; i++) {
-        printf("layer #%zu:\n", i);
+    for (uint32_t i = 0; i < nn->layerCnt; i++) {
+        printf("layer #%" PRIu32 ":\n", i);
         nn_layer_print(&nn->layers[i], i+1 < nn->layerCnt ? nn->layers[i + 1].neuronCnt : 0, what);
     }
 }
@@ -127,21 +128,21 @@ void nn_run(const nn_network_t *nn, const double *inputs)
     memset(nn->block + nn->weightCnt + nn->neuronCnt, 0,
         (nn->neuronCnt - nn->layers[0].neuronCnt) * sizeof(double *));
 
-    for (size_t l = 1; l < nn->layerCnt; l++) {
+    for (uint32_t l = 1; l < nn->layerCnt; l++) {
         const double *w = nn->layers[l - 1].weights;
 
-        for (size_t o = 0; o < nn->layers[l].neuronCnt; o++) {
+        for (uint32_t o = 0; o < nn->layers[l].neuronCnt; o++) {
             double sum = 0;
 
             // add the sum product
-            for (size_t i = 0; i < nn->layers[l - 1].neuronCnt; i++)
+            for (uint32_t i = 0; i < nn->layers[l - 1].neuronCnt; i++)
                 sum += nn->layers[l - 1].neurons[i] * *w++;
 
             // add the biais
             sum += *w++;
 
             // apply activation function and store neuron value
-            nn->layers[l].neurons[o] = nn->layers[l].act(sum);
+            nn->layers[l].neurons[o] = actMap[nn->layers[l].actId].func(sum);
         }
     }
 }
@@ -151,24 +152,24 @@ static void nn_do_backprop(const nn_network_t *nn, const double *outputs, bool a
     // Compute deltas on the output layer
     const nn_layer_t *ol = &nn->layers[nn->layerCnt - 1];
 
-    for (size_t j = 0; j < ol->neuronCnt; j++) {
+    for (uint32_t j = 0; j < ol->neuronCnt; j++) {
         const double diff = ol->neurons[j] - outputs[j];  // diff = o - t
-        ol->deltas[j] = ol->actDerinv(ol->neurons[j]);
+        ol->deltas[j] = actMap[ol->actId].funcDerinv(ol->neurons[j]);
         ol->deltas[j] *= absolute
             ? (diff > 0 ? 1 : diff < 0 ? -1 : 0)  // d/do(|diff|) = sign(diff)
             : diff;  // d/do(.5*diff^2) = diff
     }
 
     // Compute deltas on inner layer l based on deltas from next layer l+1
-    for (size_t l = nn->layerCnt - 2; l > 0; l--) {
+    for (uint32_t l = nn->layerCnt - 2; l > 0; l--) {
         const nn_layer_t *cl = &nn->layers[l], *nl = &nn->layers[l + 1];  // current and next layer
 
-        for (size_t j = 0; j < nl->neuronCnt; j++)
-            for (size_t i = 0; i < cl->neuronCnt; i++)
+        for (uint32_t j = 0; j < nl->neuronCnt; j++)
+            for (uint32_t i = 0; i < cl->neuronCnt; i++)
                 cl->deltas[i] += cl->weights[j * (cl->neuronCnt + 1) + i] * nl->deltas[j];
 
-        for (size_t i = 0; i < cl->neuronCnt; i++)
-            cl->deltas[i] *= cl->actDerinv(cl->neurons[i]);
+        for (uint32_t i = 0; i < cl->neuronCnt; i++)
+            cl->deltas[i] *= actMap[cl->actId].funcDerinv(cl->neurons[i]);
     }
 }
 
@@ -180,9 +181,9 @@ void nn_backprop(const nn_network_t *nn, const double *inputs, const double *out
 
 static void nn_do_gradient(const nn_network_t *nn, double *gradient)
 {
-    for (size_t l = 0; l < nn->layerCnt - 1; l++)
-        for (size_t j = 0; j < nn->layers[l + 1].neuronCnt; j++) {
-            for (size_t i = 0; i < nn->layers[l].neuronCnt; i++)
+    for (uint32_t l = 0; l < nn->layerCnt - 1; l++)
+        for (uint32_t j = 0; j < nn->layers[l + 1].neuronCnt; j++) {
+            for (uint32_t i = 0; i < nn->layers[l].neuronCnt; i++)
                 *gradient++ = nn->layers[l].neurons[i] * nn->layers[l + 1].deltas[j];
 
             *gradient++ = nn->layers[l + 1].deltas[j];  // biais
