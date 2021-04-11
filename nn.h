@@ -13,8 +13,9 @@
  * not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#include <stdbool.h>
 #include <inttypes.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 // Activation functions
 typedef double(*nn_func_t)(double);
@@ -81,3 +82,6 @@ void nn_backprop(const nn_network_t *nn, const double *inputs, const double *out
 // Same as backprop, but goes a step further to retreive the gradient[nn->weightCnt]
 void nn_gradient(const nn_network_t *nn, const double *inputs, const double *outputs, bool absolute,
     double *gradient);
+
+// Save network to file (binary format)
+void nn_save(const nn_network_t *nn, FILE *out);

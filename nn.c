@@ -13,7 +13,6 @@
  * not, see <http://www.gnu.org/licenses/>.
 */
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "nn.h"
@@ -195,4 +194,17 @@ void nn_gradient(const nn_network_t *nn, const double *inputs, const double *out
 {
     nn_backprop(nn, inputs, outputs, absolute);
     nn_do_gradient(nn, gradient);
+}
+
+void nn_save(const nn_network_t *nn, FILE *out)
+{
+    fwrite(&nn->layerCnt, sizeof(nn->layerCnt), 1, out);
+
+    for (uint32_t l = 0; l < nn->layerCnt; l++)
+        fwrite(&nn->layers[l].neuronCnt, sizeof(nn->layers[l].neuronCnt), 1, out);
+
+    for (uint32_t l = 1; l < nn->layerCnt; l++)
+        fwrite(&nn->layers[l].actId, sizeof(nn->layers[l].actId), 1, out);
+
+    fwrite(nn->block, sizeof(*nn->block), nn->weightCnt, out);
 }

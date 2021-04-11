@@ -52,5 +52,9 @@ int main(void)
     puts("gradient:");
     nn_array_print(nn.weightCnt, gradient);
 
+    FILE *out = fopen("network.bin", "wb");
+    nn_save(&nn, out);
+    fclose(out);
+
     nn_network_destroy(&nn);
 }
