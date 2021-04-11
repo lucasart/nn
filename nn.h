@@ -32,7 +32,7 @@ typedef struct {
     double *weights;  // (neuronCnt + 1) * nextLayer.neuronCnt (NULL for output layer)
 
     uint32_t neuronCnt;  // number of neurons on this layer
-    uint32_t actId;  // identifier of activation function (eg. NN_RELU)
+    uint32_t actId;  // identifier of activation function (ignored for input layer)
 } nn_layer_t;
 
 void nn_array_print(size_t n, const double *array);
@@ -48,7 +48,7 @@ typedef struct {
     // To reduce indexing hell, layers[] contain what is needed to handle block[] data easily
     nn_layer_t *layers;
 
-    uint32_t layerCnt, weightCnt, neuronCnt;
+    uint32_t layerCnt, weightCnt, neuronCnt, pad;
 } nn_network_t;
 
 // Create a network (zero initialized):
@@ -85,3 +85,6 @@ void nn_gradient(const nn_network_t *nn, const double *inputs, const double *out
 
 // Save network to file (binary format)
 void nn_save(const nn_network_t *nn, FILE *out);
+
+// Load network from file (binary format). This instantiates a new network (allocates memory).
+nn_network_t nn_load(FILE *in);

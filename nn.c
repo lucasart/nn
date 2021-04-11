@@ -25,10 +25,10 @@ static double nn_linear_derinv(double y) { (void)y; return 1; }
 static double nn_relu_derinv(double y) { return y > 0 ? 1 : 0; }
 static double nn_sigmoid_derinv(double y) { return y * (1 - y); }
 
-static const struct { uint32_t id; nn_func_t func, funcDerinv; char name[8]; } actMap[] = {
-    {NN_LINEAR, nn_linear, nn_linear_derinv, "linear"},
-    {NN_RELU, nn_relu, nn_relu_derinv, "relu"},
-    {NN_SIGMOID, nn_sigmoid, nn_sigmoid_derinv, "sigmoid"}
+static const struct { nn_func_t func, funcDerinv; char name[12]; uint32_t id; } actMap[] = {
+    {nn_linear, nn_linear_derinv, "linear", NN_LINEAR},
+    {nn_relu, nn_relu_derinv, "relu", NN_RELU},
+    {nn_sigmoid, nn_sigmoid_derinv, "sigmoid", NN_SIGMOID}
 };
 
 void nn_array_print(size_t n, const double *array)
@@ -207,4 +207,22 @@ void nn_save(const nn_network_t *nn, FILE *out)
         fwrite(&nn->layers[l].actId, sizeof(nn->layers[l].actId), 1, out);
 
     fwrite(nn->block, sizeof(*nn->block), nn->weightCnt, out);
+}
+
+nn_network_t nn_load(FILE *in)
+{
+    // Read network structure
+    uint32_t layerCnt = 0;
+    fread(&layerCnt, sizeof(layerCnt), 1, in);
+
+    uint32_t neuronCnts[layerCnt], actIds[layerCnt - 1];
+    fread(neuronCnts, sizeof(*neuronCnts), layerCnt, in);
+    fread(actIds, sizeof(*actIds), layerCnt - 1, in);
+
+    // Create network for the required structure (zero initialized)
+    nn_network_t nn = nn_network_init(layerCnt, neuronCnts, actIds);
+
+    // Read weights from file
+    fread(nn.block, sizeof(*nn.block), nn.weightCnt, in);
+    return nn;
 }
