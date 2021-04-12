@@ -120,6 +120,17 @@ void nn_network_print(const nn_network_t *nn, const char *what)
     }
 }
 
+// You can implement hardware optimisations here, if you need
+static nn_float_t nn_dot_product(uint32_t n, const nn_float_t *x, const nn_float_t *y)
+{
+    nn_float_t sum = 0;
+
+    for (uint32_t i = 0; i < n; i++)
+        sum += x[i] * y[i];
+
+    return sum;
+}
+
 void nn_run(const nn_network_t *nn, const nn_float_t *inputs)
 {
     if (inputs)
@@ -130,20 +141,16 @@ void nn_run(const nn_network_t *nn, const nn_float_t *inputs)
         (nn->neuronCnt - nn->layers[0].neuronCnt) * sizeof(*nn->block));
 
     for (uint32_t l = 1; l < nn->layerCnt; l++) {
-        const nn_float_t *w = nn->layers[l - 1].weights;
-
-        for (uint32_t o = 0; o < nn->layers[l].neuronCnt; o++) {
-            nn_float_t sum = 0;
-
-            // add the sum product
-            for (uint32_t i = 0; i < nn->layers[l - 1].neuronCnt; i++)
-                sum += nn->layers[l - 1].neurons[i] * *w++;
+        for (uint32_t j = 0; j < nn->layers[l].neuronCnt; j++) {
+            // dot product
+            nn_float_t sum = nn_dot_product(nn->layers[l - 1].neuronCnt, nn->layers[l - 1].neurons,
+                nn->layers[l - 1].weights + j * (nn->layers[l - 1].neuronCnt + 1));
 
             // add the biais
-            sum += *w++;
+            sum += nn->layers[l - 1].weights[(j + 1) * (nn->layers[l - 1].neuronCnt + 1) - 1];
 
             // apply activation function and store neuron value
-            nn->layers[l].neurons[o] = actMap[nn->layers[l].actId].func(sum);
+            nn->layers[l].neurons[j] = actMap[nn->layers[l].actId].func(sum);
         }
     }
 }
