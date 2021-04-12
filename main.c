@@ -42,10 +42,10 @@ int main(void)
     // Random weights and inputs
     uint64_t seed = 0;
     for (uint32_t i = 0; i < nn.weightCnt + nn.layers[0].neuronCnt; i++)
-        nn.block[i] = prng_double(&seed);
+        nn.block[i] = (nn_float_t)prng_double(&seed);
 
-    double gradient[nn.weightCnt];
-    nn_gradient(&nn, NULL, (double[1]){0.5}, gradient, false);
+    nn_float_t gradient[nn.weightCnt];
+    nn_gradient(&nn, NULL, (nn_float_t[1]){0.5}, gradient, false);
 
     puts("network:");
     nn_network_print(&nn, "anwd");

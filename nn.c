@@ -12,20 +12,20 @@
  * You should have received a copy of the GNU General Public License along with this program. If
  * not, see <http://www.gnu.org/licenses/>.
 */
-#include <math.h>
+#include <tgmath.h>
 #include <stdlib.h>
 #include <string.h>
 #include "nn.h"
 
-typedef double(*nn_func_t)(double);
+typedef nn_float_t(*nn_func_t)(nn_float_t);
 
-static double nn_linear(double x) { return x; }
-static double nn_relu(double x) { return x > 0 ? x : 0; }
-static double nn_sigmoid(double x) { return 1 / (1 + exp(-x)); }
+static nn_float_t nn_linear(nn_float_t x) { return x; }
+static nn_float_t nn_relu(nn_float_t x) { return x > 0 ? x : 0; }
+static nn_float_t nn_sigmoid(nn_float_t x) { return 1 / (1 + exp(-x)); }
 
-static double nn_linear_derinv(double y) { (void)y; return 1; }
-static double nn_relu_derinv(double y) { return y > 0 ? 1 : 0; }
-static double nn_sigmoid_derinv(double y) { return y * (1 - y); }
+static nn_float_t nn_linear_derinv(nn_float_t y) { (void)y; return 1; }
+static nn_float_t nn_relu_derinv(nn_float_t y) { return y > 0 ? 1 : 0; }
+static nn_float_t nn_sigmoid_derinv(nn_float_t y) { return y * (1 - y); }
 
 static const struct { nn_func_t func, funcDerinv; char name[12]; uint32_t id; } actMap[] = {
     {nn_linear, nn_linear_derinv, "linear", NN_LINEAR},
@@ -33,10 +33,10 @@ static const struct { nn_func_t func, funcDerinv; char name[12]; uint32_t id; } 
     {nn_sigmoid, nn_sigmoid_derinv, "sigmoid", NN_SIGMOID}
 };
 
-void nn_array_print(size_t n, const double *array)
+void nn_array_print(size_t n, const nn_float_t *array)
 {
     for (size_t i = 0; i < n; i++)
-        printf(i == n - 1 ? "%f\n": "%f,", array[i]);
+        printf(i == n - 1 ? "%f\n": "%f,", (double)array[i]);
 }
 
 void nn_layer_print(const nn_layer_t *layer, uint32_t nextLayerNeuronCnt, const char *what)
@@ -56,7 +56,7 @@ void nn_layer_print(const nn_layer_t *layer, uint32_t nextLayerNeuronCnt, const 
 
     if (strchr(what, 'w') && layer->weights) {
         printf("weights[%" PRIu32 "][%" PRIu32 "]=\n", nextLayerNeuronCnt, layer->neuronCnt + 1);
-        const double *w = layer->weights;
+        const nn_float_t *w = layer->weights;
 
         for (uint32_t j = 0; j < nextLayerNeuronCnt; j++) {
             printf("    %" PRIu32 ":", j);
@@ -80,7 +80,7 @@ nn_network_t nn_network_init(uint32_t layerCnt, uint32_t *neuronCnts, uint32_t *
             nn.weightCnt += (neuronCnts[i] + 1) * neuronCnts[i + 1];
     }
 
-    nn.block = calloc(nn.weightCnt + 2 * nn.neuronCnt - neuronCnts[0], sizeof(double *));
+    nn.block = calloc(nn.weightCnt + 2 * nn.neuronCnt - neuronCnts[0], sizeof(*nn.block));
 
     // First layer
     nn.layers[0] = (nn_layer_t){
@@ -120,20 +120,20 @@ void nn_network_print(const nn_network_t *nn, const char *what)
     }
 }
 
-void nn_run(const nn_network_t *nn, const double *inputs)
+void nn_run(const nn_network_t *nn, const nn_float_t *inputs)
 {
     if (inputs)
-        memcpy(nn->layers[0].neurons, inputs, nn->layers[0].neuronCnt * sizeof(double *));
+        memcpy(nn->layers[0].neurons, inputs, nn->layers[0].neuronCnt * sizeof(*inputs));
 
     // Clear deltas[]
     memset(nn->block + nn->weightCnt + nn->neuronCnt, 0,
-        (nn->neuronCnt - nn->layers[0].neuronCnt) * sizeof(double *));
+        (nn->neuronCnt - nn->layers[0].neuronCnt) * sizeof(*nn->block));
 
     for (uint32_t l = 1; l < nn->layerCnt; l++) {
-        const double *w = nn->layers[l - 1].weights;
+        const nn_float_t *w = nn->layers[l - 1].weights;
 
         for (uint32_t o = 0; o < nn->layers[l].neuronCnt; o++) {
-            double sum = 0;
+            nn_float_t sum = 0;
 
             // add the sum product
             for (uint32_t i = 0; i < nn->layers[l - 1].neuronCnt; i++)
@@ -148,13 +148,13 @@ void nn_run(const nn_network_t *nn, const double *inputs)
     }
 }
 
-static void nn_do_backprop(const nn_network_t *nn, const double *outputs, bool absolute)
+static void nn_do_backprop(const nn_network_t *nn, const nn_float_t *outputs, bool absolute)
 {
     // Compute deltas on the output layer
     const nn_layer_t *ol = &nn->layers[nn->layerCnt - 1];
 
     for (uint32_t j = 0; j < ol->neuronCnt; j++) {
-        const double diff = ol->neurons[j] - outputs[j];  // diff = o - t
+        const nn_float_t diff = ol->neurons[j] - outputs[j];  // diff = o - t
         ol->deltas[j] = actMap[ol->actId].funcDerinv(ol->neurons[j]);
         ol->deltas[j] *= absolute
             ? (diff > 0 ? 1 : diff < 0 ? -1 : 0)  // d/do(|diff|) = sign(diff)
@@ -174,13 +174,13 @@ static void nn_do_backprop(const nn_network_t *nn, const double *outputs, bool a
     }
 }
 
-void nn_backprop(const nn_network_t *nn, const double *inputs, const double *outputs, bool absolute)
+void nn_backprop(const nn_network_t *nn, const nn_float_t *inputs, const nn_float_t *outputs, bool absolute)
 {
     nn_run(nn, inputs);
     nn_do_backprop(nn, outputs, absolute);
 }
 
-static void nn_do_gradient(const nn_network_t *nn, double *gradient)
+static void nn_do_gradient(const nn_network_t *nn, nn_float_t *gradient)
 {
     for (uint32_t l = 0; l < nn->layerCnt - 1; l++)
         for (uint32_t j = 0; j < nn->layers[l + 1].neuronCnt; j++) {
@@ -191,8 +191,8 @@ static void nn_do_gradient(const nn_network_t *nn, double *gradient)
         }
 }
 
-void nn_gradient(const nn_network_t *nn, const double *inputs, const double *outputs,
-    double *gradient, bool absolute)
+void nn_gradient(const nn_network_t *nn, const nn_float_t *inputs, const nn_float_t *outputs,
+    nn_float_t *gradient, bool absolute)
 {
     nn_backprop(nn, inputs, outputs, absolute);
     nn_do_gradient(nn, gradient);

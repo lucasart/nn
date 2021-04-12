@@ -17,6 +17,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+// You can change this to float, if you want
+typedef double nn_float_t;
+
 // Activation functions
 enum {
     NN_LINEAR,  // y = x
@@ -25,9 +28,9 @@ enum {
 };
 
 typedef struct {
-    double *neurons;  // neurons on this layer
-    double *deltas;   // derivative of the error wrt each neuron's input (NULL for input layer)
-    double *weights;  // (neuronCnt + 1) * nextLayer.neuronCnt (NULL for output layer)
+    nn_float_t *neurons;  // neurons on this layer
+    nn_float_t *deltas;   // derivative of the error wrt each neuron's input (NULL for input layer)
+    nn_float_t *weights;  // (neuronCnt + 1) * nextLayer.neuronCnt (NULL for output layer)
 
     uint32_t neuronCnt;  // number of neurons on this layer
     uint32_t actId;      // identifier of activation function (ignored for input layer)
@@ -35,10 +38,10 @@ typedef struct {
 
 typedef struct {
     // For best performance, allocate everything in one memory block. Layout is:
-    // - double weights[weightCnt]
-    // - double neurons[neuronCnt]
-    // - double deltas[neuronCnt - layers[0].neuronCnt] (input layer has no deltas)
-    double *block;
+    // - nn_float_t weights[weightCnt]
+    // - nn_float_t neurons[neuronCnt]
+    // - nn_float_t deltas[neuronCnt - layers[0].neuronCnt] (input layer has no deltas)
+    nn_float_t *block;
 
     // To reduce indexing hell, layers[] contain what is needed to handle block[] data easily
     nn_layer_t *layers;
@@ -56,7 +59,7 @@ nn_network_t nn_network_init(
 void nn_network_destroy(nn_network_t *nn);
 
 // Print an array of n elements (useful for debugging)
-void nn_array_print(size_t n, const double *array);
+void nn_array_print(size_t n, const nn_float_t *array);
 
 // Print network, or layer (useful for debugging). 'what' is a combination of characters:
 // - 'a': print the activation function (not applicable for the input layer)
@@ -73,20 +76,20 @@ void nn_network_print(const nn_network_t *nn,
 
 // Run the network forward. If inputs == NULL, use those already stored in nn->layers[0].neurons[].
 void nn_run(const nn_network_t *nn,
-    const double *inputs);  // nn->layers[0].neuronCnt elements
+    const nn_float_t *inputs);  // nn->layers[0].neuronCnt elements
 
 // Run the network forward, and compute the deltas[] based on a sample = (inputs, outputs)
 void nn_backprop(const nn_network_t *nn,
-    const double *inputs,   // nn->layers[0].neuronCnt elements (or NULL)
-    const double *outputs,  // nn->layers[nn->layerCnt - 1].neuronCnt elements
-    bool absolute);         // use absolute error |x-y| (otherwise squared 0.5*(x-y)^2)
+    const nn_float_t *inputs,   // nn->layers[0].neuronCnt elements (or NULL)
+    const nn_float_t *outputs,  // nn->layers[nn->layerCnt - 1].neuronCnt elements
+    bool absolute);             // use absolute error |x-y| (otherwise squared 0.5*(x-y)^2)
 
 // Same as backprop, but goes a step further to retreive the gradient
 void nn_gradient(const nn_network_t *nn,
-    const double *inputs,   // nn->layers[0].neuronCnt elements (or NULL)
-    const double *outputs,  // nn->layers[nn->layers - 1].neuronCnt elements
-    double *gradient,       // nn->weightCnt elements
-    bool absolute);         // use absolute error |x-y| (otherwise squared 0.5*(x-y)^2)
+    const nn_float_t *inputs,   // nn->layers[0].neuronCnt elements (or NULL)
+    const nn_float_t *outputs,  // nn->layers[nn->layers - 1].neuronCnt elements
+    nn_float_t *gradient,       // nn->weightCnt elements
+    bool absolute);             // use absolute error |x-y| (otherwise squared 0.5*(x-y)^2)
 
 // Save network to file (binary format)
 void nn_save(const nn_network_t *nn,
