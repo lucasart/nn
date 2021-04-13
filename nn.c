@@ -140,17 +140,19 @@ void nn_run(const nn_network_t *nn, const nn_float_t *inputs)
     memset(nn->block + nn->weightCnt + nn->neuronCnt, 0,
         (nn->neuronCnt - nn->layers[0].neuronCnt) * sizeof(*nn->block));
 
-    for (uint32_t l = 1; l < nn->layerCnt; l++) {
-        for (uint32_t j = 0; j < nn->layers[l].neuronCnt; j++) {
+    for (uint32_t l = 0; l < nn->layerCnt - 1; l++) {
+        const nn_layer_t *cl = &nn->layers[l], *nl = &nn->layers[l + 1];  // current and next layer
+
+        for (uint32_t j = 0; j < nl->neuronCnt; j++) {
             // dot product
-            nn_float_t sum = nn_dot_product(nn->layers[l - 1].neuronCnt, nn->layers[l - 1].neurons,
-                nn->layers[l - 1].weights + j * (nn->layers[l - 1].neuronCnt + 1));
+            nn_float_t sum = nn_dot_product(cl->neuronCnt, cl->neurons,
+                cl->weights + j * (cl->neuronCnt + 1));
 
             // add the biais
-            sum += nn->layers[l - 1].weights[(j + 1) * (nn->layers[l - 1].neuronCnt + 1) - 1];
+            sum += cl->weights[(j + 1) * (cl->neuronCnt + 1) - 1];
 
             // apply activation function and store neuron value
-            nn->layers[l].neurons[j] = actMap[nn->layers[l].actId].func(sum);
+            nl->neurons[j] = actMap[nl->actId].func(sum);
         }
     }
 }
